@@ -1,0 +1,10 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - heading "Notes" [level=1] [ref=e5]
+    - paragraph [ref=e6]: 0 notes
+  - generic [ref=e7]:
+    - textbox "Write a note..." [active] [ref=e8]
+    - button "Add" [disabled] [ref=e9]
+  - paragraph [ref=e10]:
+    - generic [ref=e11]: ~
+    - generic [ref=e12]: No notes yet. Write one above.

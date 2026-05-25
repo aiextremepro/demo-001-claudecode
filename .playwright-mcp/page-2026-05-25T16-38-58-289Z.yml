@@ -1,0 +1,20 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - heading "Notes" [level=1] [ref=e5]
+    - paragraph [ref=e6]: 3 notes
+  - generic [ref=e7]:
+    - textbox "Write a note..." [ref=e8]
+    - button "Add" [disabled] [ref=e9]
+  - list [ref=e13]:
+    - listitem [ref=e19]:
+      - generic [ref=e20]: Call dentist
+      - button "Delete note" [ref=e21] [cursor=pointer]:
+        - img [ref=e22]
+    - listitem [ref=e24]:
+      - generic [ref=e25]: Buy groceries
+      - button "Delete note" [ref=e26] [cursor=pointer]:
+        - img [ref=e27]
+    - listitem [ref=e29]:
+      - generic [ref=e30]: Helloworld
+      - button "Delete note" [ref=e31] [cursor=pointer]:
+        - img [ref=e32]
