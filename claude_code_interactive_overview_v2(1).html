@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Claude Code Interactive Capability Explorer</title>
+<style>
+  :root{
+    --bg:#07111f;
+    --panel:#0d1b2f;
+    --panel2:#102640;
+    --text:#f7fbff;
+    --muted:#97abc2;
+    --line:rgba(255,255,255,.12);
+    --accent:#72d5ff;
+    --accent2:#a58bff;
+    --good:#8ff0c6;
+    --warn:#ffd479;
+    --danger:#ff9d9d;
+    --shadow:0 24px 70px rgba(0,0,0,.32);
+    --surface:rgba(7,17,31,.66);
+    --surface-strong:#091725;
+    --node1:#10233a;
+    --node2:#0d1b2f;
+    --codebg:#06101d;
+    --diagramText:#d9edff;
+  }
+  body.light{
+    --bg:#eef4fb;
+    --panel:#ffffff;
+    --panel2:#f3f7fc;
+    --text:#132238;
+    --muted:#5f7186;
+    --line:rgba(19,34,56,.13);
+    --accent:#0b78d0;
+    --accent2:#6c5ce7;
+    --good:#0c9b6a;
+    --warn:#b7791f;
+    --danger:#c33a3a;
+    --shadow:0 24px 70px rgba(49,79,114,.16);
+    --surface:rgba(255,255,255,.82);
+    --surface-strong:#ffffff;
+    --node1:#ffffff;
+    --node2:#eef5fb;
+    --codebg:#f2f6fb;
+    --diagramText:#17324e;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text);}
+  body{
+    background:
+      radial-gradient(circle at 10% 20%, rgba(83,111,255,.13), transparent 26%),
+      radial-gradient(circle at 90% 10%, rgba(0,210,255,.10), transparent 24%),
+      linear-gradient(180deg,#06101d,#07111f 42%,#07111f);
+  }
+  body.light{
+    background:
+      radial-gradient(circle at 10% 20%, rgba(11,120,208,.10), transparent 25%),
+      radial-gradient(circle at 90% 10%, rgba(108,92,231,.08), transparent 24%),
+      linear-gradient(180deg,#f7fbff,#eef4fb 45%,#edf3f9);
+  }
+  body{overflow-x:hidden}
+  button{font:inherit}
+  .app{min-height:100vh;padding:24px}
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;gap:16px;max-width:1500px;margin:0 auto 20px;
+  }
+  .brand{display:flex;align-items:center;gap:12px}
+  .brandMark{
+    width:44px;height:44px;border-radius:14px;display:grid;place-items:center;font-weight:900;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04101d;box-shadow:0 10px 28px rgba(114,213,255,.18)
+  }
+  .brand h1{font-size:18px;margin:0 0 3px}
+  .brand p{margin:0;color:var(--muted);font-size:12px}
+  .toolbar{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end}
+  .btn{
+    border:1px solid var(--line);background:rgba(255,255,255,.035);color:var(--text);
+    padding:10px 13px;border-radius:12px;cursor:pointer;transition:.2s ease;box-shadow:none
+  }
+  .btn:hover{transform:translateY(-1px);background:rgba(255,255,255,.075);border-color:rgba(114,213,255,.4)}
+  .btn.primary{background:linear-gradient(135deg,rgba(114,213,255,.18),rgba(165,139,255,.18));border-color:rgba(114,213,255,.38)}
+  .btn.active{outline:2px solid rgba(114,213,255,.42)}
+  .shell{
+    max-width:1500px;margin:0 auto;border:1px solid var(--line);border-radius:28px;background:var(--surface);
+    backdrop-filter:blur(14px);box-shadow:var(--shadow);overflow:hidden;min-height:790px;position:relative
+  }
+  .landing{
+    min-height:790px;display:flex;align-items:center;justify-content:center;position:relative;
+  }
+  .landing:before{
+    content:"";position:absolute;width:620px;height:620px;border-radius:50%;
+    background:radial-gradient(circle,rgba(114,213,255,.10),rgba(165,139,255,.04) 35%,transparent 68%);
+    filter:blur(8px)
+  }
+  .centerHub{
+    width:250px;height:250px;border-radius:50%;border:1px solid rgba(114,213,255,.42);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;
+    background:linear-gradient(145deg,rgba(20,62,94,.92),rgba(25,27,64,.95));
+    box-shadow:0 0 0 18px rgba(114,213,255,.035),0 22px 90px rgba(0,0,0,.45);
+    cursor:pointer;position:relative;z-index:3;transition:.35s ease;
+  }
+  .centerHub:hover{transform:scale(1.035)}
+  .centerHub .eyebrow{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent)}
+  .centerHub strong{font-size:34px;letter-spacing:-.03em}
+  .centerHub small{max-width:175px;color:#b8cae0;line-height:1.4}
+  .pulse{
+    position:absolute;width:290px;height:290px;border-radius:50%;border:1px solid rgba(114,213,255,.24);
+    animation:pulse 2.6s infinite;z-index:1
+  }
+  @keyframes pulse{0%{transform:scale(.85);opacity:.9}100%{transform:scale(1.25);opacity:0}}
+  .mapView{display:none;min-height:790px;position:relative}
+  .mapView.visible{display:block}
+  .radial{
+    width:100%;min-height:790px;position:relative;overflow:hidden;
+  }
+  .radial .centerHub{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:210px;height:210px}
+  .radial .centerHub:hover{transform:translate(-50%,-50%) scale(1.03)}
+  .node{
+    position:absolute;width:132px;height:132px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    text-align:center;padding:16px;border:1px solid var(--line);background:linear-gradient(145deg,var(--node1),var(--node2));
+    color:var(--text);cursor:pointer;transition:border-color .24s ease, box-shadow .24s ease, filter .24s ease;
+    box-shadow:0 14px 35px rgba(0,0,0,.26);font-weight:700;line-height:1.18;
+    transform:translate(-50%,-50%);
+  }
+  .node:hover{filter:brightness(1.07);border-color:rgba(114,213,255,.65);box-shadow:0 18px 50px rgba(0,0,0,.34),0 0 0 7px rgba(114,213,255,.04)}
+  .node small{display:block;font-size:10px;color:var(--muted);font-weight:500;margin-top:5px}
+  .node.active{outline:3px solid rgba(114,213,255,.35);border-color:var(--accent)}
+  .linkLine{position:absolute;height:1px;background:linear-gradient(90deg,transparent,rgba(114,213,255,.2),transparent);transform-origin:left center;pointer-events:none}
+  .detailLayout{display:none;grid-template-columns:330px 1fr;min-height:790px}
+  .detailLayout.visible{display:grid}
+  .miniMap{
+    border-right:1px solid var(--line);padding:24px;background:linear-gradient(180deg,rgba(12,30,50,.92),rgba(7,17,31,.75));
+    position:relative
+  }
+  .miniMap h3{margin:0 0 5px;font-size:14px}
+  .miniMap p{margin:0;color:var(--muted);font-size:12px}
+  .miniNodes{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-top:22px}
+  .miniNode{
+    border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.035);padding:12px 10px;min-height:66px;
+    color:#dce8f6;cursor:pointer;text-align:left;font-size:12px;transition:.2s ease
+  }
+  .miniNode:hover{border-color:rgba(114,213,255,.45);background:rgba(114,213,255,.06)}
+  .miniNode.active{border-color:var(--accent);background:linear-gradient(135deg,rgba(114,213,255,.13),rgba(165,139,255,.10))}
+  .miniNode span{display:block;color:var(--muted);font-size:10px;margin-top:4px}
+  .backBtn{margin-top:18px;width:100%}
+  .content{
+    padding:34px 38px 42px;min-width:0
+  }
+  .topicHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:22px}
+  .topicHeader .kicker{color:var(--accent);text-transform:uppercase;letter-spacing:.18em;font-size:11px;font-weight:800}
+  .topicHeader h2{font-size:34px;margin:7px 0 8px;letter-spacing:-.03em}
+  .topicHeader p{margin:0;color:var(--muted);font-size:15px;max-width:850px;line-height:1.6}
+  .badge{
+    padding:8px 11px;border-radius:999px;border:1px solid var(--line);font-size:11px;color:#d9e9f9;
+    background:rgba(255,255,255,.035);white-space:nowrap
+  }
+  .triple{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0 24px
+  }
+  .infoBox{border:1px solid var(--line);border-radius:18px;padding:16px;background:rgba(255,255,255,.028)}
+  .infoBox label{display:block;color:var(--accent);font-size:10px;letter-spacing:.16em;text-transform:uppercase;font-weight:900;margin-bottom:7px}
+  .infoBox strong{font-size:14px;line-height:1.45}
+  .sectionTitle{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:#aac0d7;margin:28px 0 12px}
+  .cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+  .card{
+    border:1px solid var(--line);border-radius:16px;background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.018));
+    padding:15px;cursor:pointer;transition:.2s ease;min-height:116px;position:relative;overflow:hidden
+  }
+  .card:after{
+    content:"→";position:absolute;right:12px;top:11px;color:rgba(255,255,255,.24);font-size:17px
+  }
+  .card:hover{transform:translateY(-2px);border-color:rgba(114,213,255,.45);background:linear-gradient(180deg,rgba(114,213,255,.07),rgba(255,255,255,.022))}
+  .card h4{margin:0 26px 7px 0;font-size:14px}
+  .card p{margin:0;color:var(--muted);font-size:12px;line-height:1.48}
+  .card .type{
+    display:inline-flex;margin-top:11px;font-size:9px;text-transform:uppercase;letter-spacing:.12em;padding:5px 7px;border-radius:999px;border:1px solid var(--line);color:#bfd2e5
+  }
+  .teachingStrip{
+    margin-top:28px;border:1px solid rgba(114,213,255,.28);border-radius:18px;padding:16px;
+    background:linear-gradient(135deg,rgba(114,213,255,.08),rgba(165,139,255,.06))
+  }
+  .teachingStrip strong{display:block;font-size:12px;color:var(--accent);margin-bottom:7px;letter-spacing:.12em;text-transform:uppercase}
+  .teachingStrip p{margin:0;color:#dce7f4;line-height:1.55;font-size:13px}
+  .demoPanel{
+    position:fixed;right:24px;bottom:24px;width:min(540px,calc(100vw - 48px));max-height:76vh;overflow:auto;z-index:40;
+    border:1px solid rgba(114,213,255,.36);border-radius:22px;background:color-mix(in srgb, var(--surface-strong) 96%, transparent);box-shadow:0 30px 90px rgba(0,0,0,.55);
+    padding:20px;display:none
+  }
+  .demoPanel.visible{display:block;animation:pop .18s ease}
+  @keyframes pop{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}
+  .demoHead{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}
+  .demoHead h3{margin:4px 0 0;font-size:20px}
+  .close{border:0;background:transparent;color:var(--muted);font-size:24px;cursor:pointer}
+  .steps{display:grid;gap:10px;margin-top:16px}
+  .step{border:1px solid var(--line);border-radius:14px;padding:12px;background:rgba(255,255,255,.025)}
+  .step label{display:block;color:var(--accent);font-size:9px;text-transform:uppercase;letter-spacing:.14em;font-weight:900;margin-bottom:4px}
+  .step p{margin:0;font-size:13px;line-height:1.5;color:#e5eef8}
+  .step code{display:block;background:var(--codebg);border:1px solid rgba(255,255,255,.08);padding:9px;border-radius:9px;overflow:auto;margin-top:7px;color:#c5f2ff}
+  .connectView{
+    display:none;padding:34px;min-height:790px
+  }
+  .connectView.visible{display:block}
+  .connectGrid{
+    display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;margin-top:24px
+  }
+  .diagram{
+    border:1px solid var(--line);border-radius:24px;background:rgba(255,255,255,.025);padding:28px;min-height:550px;display:grid;place-items:center
+  }
+  .diagram pre{margin:0;color:var(--diagramText);font-size:15px;line-height:1.55;white-space:pre-wrap;font-family:"SFMono-Regular",Consolas,monospace}
+  .legend{display:grid;gap:10px}
+  .legendItem{border:1px solid var(--line);border-radius:16px;padding:15px;background:rgba(255,255,255,.025)}
+  .legendItem strong{display:block;margin-bottom:5px}
+  .legendItem p{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
+  .searchWrap{position:relative}
+  .search{
+    width:260px;max-width:42vw;border:1px solid var(--line);background:rgba(255,255,255,.035);color:var(--text);
+    border-radius:12px;padding:10px 12px;outline:none
+  }
+  .search:focus{border-color:rgba(114,213,255,.55)}
+  .searchResults{
+    position:absolute;right:0;top:46px;width:360px;max-width:75vw;background:var(--surface-strong);border:1px solid var(--line);border-radius:16px;
+    box-shadow:var(--shadow);padding:8px;display:none;z-index:50;max-height:420px;overflow:auto
+  }
+  .searchResults.visible{display:block}
+  .result{padding:10px;border-radius:10px;cursor:pointer}
+  .result:hover{background:rgba(114,213,255,.07)}
+  .result strong{display:block;font-size:12px}
+  .result span{display:block;color:var(--muted);font-size:10px;margin-top:3px}
+  .footerNote{max-width:1500px;margin:14px auto 0;text-align:center;color:#6f879f;font-size:11px}
+  @media(max-width:1100px){
+    .cards{grid-template-columns:repeat(2,1fr)}
+    .detailLayout{grid-template-columns:280px 1fr}
+    .node{width:112px;height:112px;font-size:13px}
+    .radial .centerHub{width:190px;height:190px}
+
+  }
+  @media(max-width:820px){
+    .app{padding:12px}
+    .topbar{align-items:flex-start}
+    .toolbar{width:100%}
+    .search{width:100%;max-width:none}
+    .searchWrap{flex:1;min-width:180px}
+    .detailLayout.visible{display:block}
+    .miniMap{border-right:0;border-bottom:1px solid var(--line)}
+    .miniNodes{grid-template-columns:repeat(3,1fr)}
+    .content{padding:24px 18px 34px}
+    .triple{grid-template-columns:1fr}
+    .cards{grid-template-columns:1fr}
+    .connectGrid{grid-template-columns:1fr}
+    .radial{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding:170px 16px 24px;min-height:auto}
+    .radial .centerHub{top:20px;left:50%;transform:translateX(-50%);width:140px;height:140px}
+    .radial .centerHub strong{font-size:22px}
+    .radial .node{position:relative!important;left:auto!important;top:auto!important;transform:none!important;width:100%;height:104px;border-radius:18px}
+    .linkLine{display:none}
+  }
+
+  body.light .brandMark{color:#ffffff}
+  body.light .centerHub{
+    background:linear-gradient(145deg,#ffffff,#eef6ff);
+    color:var(--text);
+    box-shadow:0 0 0 18px rgba(11,120,208,.035),0 22px 70px rgba(49,79,114,.16);
+  }
+  body.light .centerHub small{color:#61758b}
+  body.light .miniMap{
+    background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(243,247,252,.92));
+  }
+  body.light .btn,
+  body.light .miniNode,
+  body.light .infoBox,
+  body.light .card,
+  body.light .legendItem,
+  body.light .diagram{
+    background:rgba(255,255,255,.72);
+  }
+  body.light .card:hover{
+    background:linear-gradient(180deg,rgba(11,120,208,.07),rgba(255,255,255,.9));
+  }
+  body.light .step{background:rgba(245,249,253,.96)}
+  body.light .step p{color:#26394e}
+  body.light .search{background:#ffffff}
+  body.light .result:hover{background:rgba(11,120,208,.07)}
+  body.light .teachingStrip{
+    background:linear-gradient(135deg,rgba(11,120,208,.07),rgba(108,92,231,.05));
+  }
+
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="brand">
+      <div class="brandMark">CC</div>
+      <div>
+        <h1>Claude Code Capability Explorer</h1>
+        <p>Interactive overview for course walkthroughs and demos</p>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="searchWrap">
+        <input id="search" class="search" placeholder="Search skills, MCP, hooks, review..." />
+        <div id="searchResults" class="searchResults"></div>
+      </div>
+      <button class="btn" id="themeBtn" aria-label="Toggle light and dark theme">☀ Light Theme</button>
+      <button class="btn" id="mapBtn">Capability Map</button>
+      <button class="btn primary" id="connectBtn">How Everything Connects</button>
+    </div>
+  </div>
+
+  <main class="shell">
+    <section id="landing" class="landing">
+      <div class="pulse"></div>
+      <div class="centerHub" id="launchHub">
+        <div class="eyebrow">Interactive Overview</div>
+        <strong>CLAUDE CODE</strong>
+        <small>Click to explore the capability map</small>
+      </div>
+    </section>
+
+    <section id="mapView" class="mapView">
+      <div id="radial" class="radial">
+        <div style="position:absolute;left:50%;top:26px;transform:translateX(-50%);text-align:center;z-index:2;pointer-events:none">
+          <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);font-weight:800">Capability Map</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:5px">11 core capabilities • click any circle to explore</div>
+        </div>
+        <div class="centerHub" id="centerMapHub">
+          <div class="eyebrow">Core</div>
+          <strong>CLAUDE CODE</strong>
+          <small>Agentic coding • context • tools • automation</small>
+        </div>
+      </div>
+    </section>
+
+    <section id="detailLayout" class="detailLayout">
+      <aside class="miniMap">
+        <h3>Claude Code</h3>
+        <p>Choose any capability to explore.</p>
+        <div id="miniNodes" class="miniNodes"></div>
+        <button id="backToMap" class="btn backBtn">← Back to Capability Map</button>
+      </aside>
+      <div class="content">
+        <div id="topic"></div>
+      </div>
+    </section>
+
+    <section id="connectView" class="connectView">
+      <div class="topicHeader">
+        <div>
+          <div class="kicker">System View</div>
+          <h2>How Everything Connects</h2>
+          <p>Use this as the “mental model” slide before deep-diving into individual Claude Code capabilities.</p>
+        </div>
+        <span class="badge">Architecture View</span>
+      </div>
+      <div class="connectGrid">
+        <div class="diagram">
+<pre>
+                        CLAUDE.md
+                           │
+                         RULES
+                           │
+                           ▼
+USER ───────────────→ CLAUDE CODE ───────────────→ RESULT
+                           │
+             ┌─────────────┼─────────────┐
+             ▼             ▼             ▼
+           SKILL       SUBAGENT          MCP
+             │             │             │
+             │         WORKTREE          │
+             │             │             │
+             └─────────────┼─────────────┘
+                           ▼
+                          HOOK
+                           │
+                           ▼
+                      RUN / VERIFY
+                           │
+                           ▼
+                         REVIEW
+                           │
+                           ▼
+                        DELIVERY
+</pre>
+        </div>
+        <div class="legend">
+          <div class="legendItem"><strong>Instructions</strong><p>CLAUDE.md and Rules tell Claude what to know about your project and how to behave.</p></div>
+          <div class="legendItem"><strong>Skills</strong><p>Reusable procedures for repeatable tasks and workflows.</p></div>
+          <div class="legendItem"><strong>Subagents</strong><p>Specialized workers with their own context, tools, model settings and responsibilities.</p></div>
+          <div class="legendItem"><strong>MCP</strong><p>Connects Claude Code to external tools, data sources and services.</p></div>
+          <div class="legendItem"><strong>Hooks</strong><p>Event-driven enforcement and deterministic automation around Claude actions.</p></div>
+          <div class="legendItem"><strong>Worktrees & Review</strong><p>Isolate concurrent code changes and add structured verification before merge.</p></div>
+          <div class="legendItem"><strong>Workflows</strong><p>Connect planning, skills, agents, tools, verification, review and delivery into an end-to-end engineering process.</p></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="footerNote">Single-file HTML5 • No external dependencies • Designed for course recording and live walkthroughs</div>
+</div>
+
+<div id="demoPanel" class="demoPanel">
+  <div class="demoHead">
+    <div>
+      <div id="demoKicker" class="kicker" style="color:var(--accent);font-size:10px;letter-spacing:.16em;text-transform:uppercase;font-weight:800"></div>
+      <h3 id="demoTitle"></h3>
+    </div>
+    <button id="closeDemo" class="close">×</button>
+  </div>
+  <div id="demoSteps" class="steps"></div>
+</div>
+
+<script>
+const topics = [
+  {
+    id:"commands", title:"Commands & Modes", short:"Operate Claude Code", level:"Beginner",
+    intro:"Learn how to control Claude Code before extending it.",
+    what:"The operating controls for starting, inspecting and steering a Claude Code session.",
+    why:"Beginners need a predictable way to move between exploration, planning, execution and recovery.",
+    remember:"Start simple: launch → inspect → plan → execute → verify → resume.",
+    teaching:"Prompting is only one part of Claude Code. The first skill is learning how to control the session itself.",
+    cards:[
+      ["Start Claude","Launch Claude Code inside a repository and establish working context.","Understand","Goal: open a repository and begin a coding session."],
+      ["/help","Discover the commands and capabilities available in the current environment.","Use","Goal: inspect built-in commands and identify the controls you will use in the course."],
+      ["Plan Mode","Explore the repository and form a plan before changing code.","Use","Goal: ask Claude to understand the codebase and produce a change plan without editing files."],
+      ["Execution Mode","Move from analysis to implementation when you are ready.","Use","Goal: allow Claude to implement the approved change."],
+      ["Model / Effort","Choose an appropriate model and effort level for the task.","Configure","Goal: compare fast exploration with higher-effort reasoning for a harder change."],
+      ["/status","Inspect the current Claude Code state and environment.","Verify","Goal: confirm repository/session state before making changes."],
+      ["/doctor","Diagnose setup, environment or dependency problems.","Verify","Goal: check the environment when Claude Code behaves unexpectedly."],
+      ["/context","Inspect how context is being consumed.","Verify","Goal: see what is contributing to the session context."],
+      ["/compact","Reduce context while preserving the important state of the task.","Use","Goal: compact a long session before continuing."],
+      ["Resume Session","Continue work from a prior Claude Code session.","Demo","Goal: exit a session and resume it later without rebuilding context manually."],
+      ["Rewind / Recover","Recover when a session heads in the wrong direction.","Demo","Goal: undo or redirect a poor path safely."],
+      ["Commands → Skills","Understand why repeatable custom procedures belong in Skills rather than ad-hoc commands.","Understand","Goal: convert a repeated manual sequence into a reusable Skill."]
+    ]
+  },
+  {
+    id:"instructions", title:"Instructions, Rules & Memory", short:"Persistent guidance", level:"Beginner",
+    intro:"Tell Claude how your project works and what should remain true across sessions.",
+    what:"Persistent guidance mechanisms: CLAUDE.md, Rules, memory and scoped instructions.",
+    why:"Without project guidance, the agent repeatedly relearns architecture, conventions and constraints.",
+    remember:"Prompt = current task. CLAUDE.md/Rules = persistent guidance. Skill = reusable procedure.",
+    teaching:"Keep persistent knowledge small and deliberate. Procedures belong in Skills; enforcement belongs in Hooks.",
+    cards:[
+      ["CLAUDE.md","Store project-level guidance, conventions and architecture constraints.","Understand","Goal: create or inspect CLAUDE.md and identify what belongs there."],
+      ["Create CLAUDE.md","Bootstrap a useful project instruction file instead of starting from a blank page.","Demo","Goal: generate initial repository guidance and refine it."],
+      ["Project Instructions","Define rules that should apply specifically to this repository.","Configure","Goal: add repository conventions and test whether Claude follows them."],
+      ["User Instructions","Apply personal defaults across projects without committing them to the repository.","Configure","Goal: separate personal preferences from shared project rules."],
+      ["Nested Instructions","Apply more specific guidance to selected folders or parts of the repository.","Configure","Goal: give backend and frontend areas different local guidance."],
+      ["Rules","Break persistent instructions into modular, focused rule files.","Understand","Goal: move a long monolithic instruction into maintainable rules."],
+      ["Imports","Reuse instruction material rather than duplicating it.","Configure","Goal: share common guidance across related contexts."],
+      ["Auto Memory","Allow useful project knowledge to persist across sessions where supported.","Understand","Goal: inspect what persistent memory is retaining and decide what should remain."],
+      ["Edit Memory","Correct or remove stale assumptions that have accumulated.","Verify","Goal: review a remembered fact and update it when the project changes."],
+      ["Output Styles","Control response and working style separately from project knowledge.","Configure","Goal: switch to a more concise or instructional output style."],
+      ["AGENTS.md Compatibility","Understand shared repository guidance when multiple coding agents are used.","Understand","Goal: distinguish CLAUDE.md-specific guidance from agent-neutral repository instructions."],
+      ["Instruction Precedence","Understand what wins when multiple instruction sources overlap.","Verify","Goal: create a deliberate conflict and observe which instruction applies."],
+      ["Keep It Lean","Avoid turning CLAUDE.md into an unmaintainable procedure manual.","Verify","Goal: identify content that should move to a Skill or Hook."]
+    ]
+  },
+  {
+    id:"context", title:"Context & Sessions", short:"What Claude knows", level:"Beginner",
+    intro:"Understand what Claude currently knows, what consumes context, and how sessions remain usable over time.",
+    what:"The working information Claude can see during a task: prompts, files, tool results, instructions and conversation.",
+    why:"Poor context management creates cost, drift and missed constraints even when the model is capable.",
+    remember:"More context is not automatically better context.",
+    teaching:"A strong operator manages context intentionally instead of treating the conversation as infinite memory.",
+    cards:[
+      ["Context Window","Understand the bounded working memory available to the active session.","Understand","Goal: explain why very long sessions eventually require compaction."],
+      ["What Enters Context","Identify prompts, instructions, files and tool results that consume context.","Understand","Goal: inspect a session and list the main context contributors."],
+      ["Context Inspection","See what is occupying the context window before it becomes a problem.","Verify","Goal: use context inspection during a real repository task."],
+      ["Context Cost","Connect context size to latency and model usage.","Understand","Goal: compare a focused task with an overloaded session."],
+      ["Compaction","Summarize the important state and continue with a smaller context footprint.","Demo","Goal: compact after a long debug loop and continue successfully."],
+      ["Automatic Compaction","Understand what happens when the system compacts context automatically.","Understand","Goal: recognize the difference between manual and automatic compaction."],
+      ["Session History","Use previous sessions as a navigable work history.","Use","Goal: locate a previous session for a repository."],
+      ["Resume Session","Continue an interrupted task without reconstructing everything manually.","Demo","Goal: resume a session and verify the retained state."],
+      ["Fork / Branch Session","Explore an alternate path without losing the original line of work where supported.","Advanced","Goal: compare two solution directions from the same starting context."],
+      ["Background Sessions","Understand how longer-running work changes session management.","Advanced","Goal: start long work, then inspect status/results separately."],
+      ["Context Hygiene","Keep only the information that helps the current decision.","Verify","Goal: identify irrelevant artifacts and reduce noise."],
+      ["What Not To Load","Avoid dumping large logs, generated files and unnecessary documentation into every session.","Verify","Goal: design a lightweight context strategy for a medium repository."]
+    ]
+  },
+  {
+    id:"permissions", title:"Permissions, Settings & Safety", short:"Control authority", level:"Beginner",
+    intro:"Define what Claude can do, when it must ask, and how the environment stays controlled.",
+    what:"Configuration, approval and execution boundaries around tools, files, shell commands and external access.",
+    why:"Coding agents act on systems. Authority must be designed, not assumed.",
+    remember:"Allow what is routine. Ask for consequential actions. Deny what should never happen.",
+    teaching:"Agentic coding is delegated authority. Permissions are part of architecture, not just convenience.",
+    cards:[
+      ["settings.json","Understand the main Claude Code settings surface.","Configure","Goal: open settings and identify project, user and local controls."],
+      ["User Settings","Apply defaults across multiple repositories.","Configure","Goal: create one preference that follows you across projects."],
+      ["Project Settings","Commit shared settings that should apply to the repository team.","Configure","Goal: add a project-level control and verify it is shared."],
+      ["Local Settings","Keep machine-specific or personal project settings out of version control.","Configure","Goal: add a local-only setting for the current machine."],
+      ["Settings Precedence","Understand which configuration wins when scopes overlap.","Verify","Goal: deliberately override a user setting at project level."],
+      ["Allow","Pre-approve low-risk actions that should run without repeated interruption.","Configure","Goal: allow a safe command pattern and test it."],
+      ["Ask","Require confirmation before higher-impact actions.","Configure","Goal: make a command require human approval."],
+      ["Deny","Block actions that should not be available to the agent.","Configure","Goal: deny a risky command or path."],
+      ["Tool Restrictions","Limit which tools or actions a workflow can invoke.","Configure","Goal: narrow a task to only the tools it needs."],
+      ["Sandbox","Understand isolated execution and its limits.","Understand","Goal: compare sandboxed execution with unrestricted local authority."],
+      ["Network Controls","Restrict outbound access for sensitive work.","Configure","Goal: identify which workflow actually requires network access."],
+      ["Workspace Trust","Decide whether project-provided executable configuration should be trusted.","Understand","Goal: explain the risk of opening an unfamiliar repository."],
+      ["Dangerous Operations","Identify delete, rewrite, deploy and credential-impacting actions.","Verify","Goal: mark actions that should never be silently auto-approved."],
+      ["Secrets","Keep credentials out of prompts, source files and committed settings.","Verify","Goal: design a safer authentication path for a tool integration."]
+    ]
+  },
+  {
+    id:"skills", title:"Skills", short:"Reusable workflows", level:"Intermediate",
+    intro:"Turn repeatable procedures into reusable specialist workflows.",
+    what:"Structured reusable instructions, references and scripts that Claude can invoke for a specific kind of work.",
+    why:"Skills reduce repeated prompting and standardize how important tasks are performed.",
+    remember:"Skill = reusable procedure. CLAUDE.md = persistent guidance. MCP = external capability.",
+    teaching:"A good Skill packages the procedure; it does not become a dumping ground for all project knowledge.",
+    cards:[
+      ["What Is a Skill?","Build the mental model before creating one.","Understand","Goal: explain when a repeated prompt should become a Skill."],
+      ["Skill vs Prompt","Choose between one-off instruction and reusable capability.","Understand","Goal: classify several tasks as prompt or Skill."],
+      ["Skill vs CLAUDE.md","Separate workflow procedure from persistent project guidance.","Understand","Goal: refactor a procedural CLAUDE.md section into a Skill."],
+      ["Skill Structure","Understand the folder and supporting resources around a Skill.","Understand","Goal: inspect a complete Skill directory."],
+      ["SKILL.md","Define the central instructions and metadata for the Skill.","Configure","Goal: write a minimal valid SKILL.md."],
+      ["Frontmatter","Use name, description and behavior metadata carefully.","Configure","Goal: improve a weak Skill description so invocation is more precise."],
+      ["Create Skill","Build a Skill manually from scratch.","Demo","Goal: create a repository-aware code review Skill."],
+      ["Skill Creator","Use a guided creation workflow where available.","Demo","Goal: generate an initial Skill and then refine it."],
+      ["Auto Invocation","Let Claude select a Skill when the task matches its description.","Use","Goal: ask naturally and see whether the correct Skill triggers."],
+      ["Manual Invocation","Call a Skill explicitly when you want deterministic selection.","Use","Goal: invoke the Skill by name and compare behavior."],
+      ["Arguments","Parameterize a Skill instead of cloning multiple near-identical versions.","Configure","Goal: pass target module or severity as an argument."],
+      ["Supporting Files","Add checklists, templates and references without bloating SKILL.md.","Configure","Goal: move a long review checklist into a supporting file."],
+      ["Scripts","Use deterministic scripts for repeatable mechanical work.","Demo","Goal: call a helper script from the Skill workflow."],
+      ["Dynamic Context","Bring relevant live information into the workflow when needed.","Advanced","Goal: enrich a Skill with current repository or tool state."],
+      ["Skill Scope","Decide whether the Skill is personal, project-scoped or packaged.","Configure","Goal: place a Skill at the correct scope."],
+      ["Update Skill","Evolve the workflow when standards change.","Demo","Goal: modify an existing Skill without breaking the core contract."],
+      ["Test Skill","Verify triggering, procedure and final result.","Verify","Goal: run normal, edge and negative cases."],
+      ["Skill Evals","Evaluate Skills systematically rather than relying on one good demo.","Advanced","Goal: define repeatable cases for Skill quality."],
+      ["Skill + Subagent","Run a Skill inside a specialized worker context.","Advanced","Goal: create a review agent that uses a review Skill."],
+      ["Skill + MCP","Combine a reusable procedure with external tools/data.","Advanced","Goal: build a Skill that retrieves information through MCP."],
+      ["Share Skill","Distribute a useful workflow to a team or package.","Demo","Goal: move a tested Skill into a reusable shared location."],
+      ["Best Practices","Keep Skills focused, discoverable and testable.","Verify","Goal: review a bad Skill and identify overloading or ambiguity."]
+    ]
+  },
+  {
+    id:"agents", title:"Subagents & Agent Teams", short:"Delegate work", level:"Intermediate",
+    intro:"Delegate isolated or specialized work and coordinate multiple workers when the task benefits from parallelism.",
+    what:"Independent workers with their own context, instructions, tools and responsibility boundaries.",
+    why:"Large tasks become easier to control when research, implementation, testing and review are separated.",
+    remember:"Use agents for isolation and specialization—not just because multiple agents look impressive.",
+    teaching:"Start with one strong agent. Add more only when parallelism or context separation creates real value.",
+    cards:[
+      ["What Is a Subagent?","Understand isolated delegation and specialized context.","Understand","Goal: explain why a subagent differs from continuing the main conversation."],
+      ["Why Delegate?","Use delegation for specialization, context isolation or parallel work.","Understand","Goal: decide whether a task needs a subagent at all."],
+      ["Create Subagent","Define a specialized worker with a clear responsibility.","Demo","Goal: create a testing subagent."],
+      ["Agent File Anatomy","Understand description, instructions, tools and execution settings.","Understand","Goal: inspect a complete agent definition."],
+      ["Description","Make the agent easy for Claude to choose correctly.","Configure","Goal: rewrite an ambiguous agent description."],
+      ["System Instructions","Define the worker's role, method and constraints.","Configure","Goal: build a focused reviewer instruction set."],
+      ["Tool Allowlist","Give the worker only the tools required for its job.","Configure","Goal: create a read-only reviewer."],
+      ["Disallowed Tools","Prevent an agent from taking actions outside its role.","Configure","Goal: block a review agent from editing files."],
+      ["Model Selection","Match model capability and cost to the worker's responsibility.","Configure","Goal: use different models for exploration and high-stakes review."],
+      ["Effort","Adjust reasoning effort for specialist tasks.","Configure","Goal: compare normal vs high-effort review."],
+      ["Permission Mode","Control how much authority the subagent receives.","Configure","Goal: restrict an agent to safe operations."],
+      ["Max Turns","Bound long-running workers.","Configure","Goal: prevent a runaway exploration loop."],
+      ["Skills Inside Agent","Give the worker a reusable procedure.","Advanced","Goal: attach a testing Skill to the testing agent."],
+      ["MCP Inside Agent","Give the worker external capabilities where needed.","Advanced","Goal: connect a documentation MCP only to the research agent."],
+      ["Hooks Inside Agent","Apply agent-specific event-driven controls.","Advanced","Goal: enforce validation before the agent returns a result."],
+      ["Persistent Agent Memory","Retain useful specialist knowledge where supported.","Advanced","Goal: preserve domain knowledge without polluting the parent session."],
+      ["Background Execution","Run independent work without blocking the main interaction.","Advanced","Goal: start a longer test analysis and continue other work."],
+      ["Worktree Isolation","Give code-writing agents separate working directories.","Advanced","Goal: run two code changes without file collisions."],
+      ["Parallel Subagents","Fan work out across independent workers.","Demo","Goal: run code, test and review workers in parallel."],
+      ["When Not To Use Agents","Avoid coordination overhead for small or tightly coupled tasks.","Verify","Goal: simplify an over-engineered multi-agent workflow."],
+      ["Agent Teams","Coordinate multiple collaborating agents through a lead.","Advanced","Goal: model frontend, backend and test agents under one team lead."],
+      ["Shared Tasks","Break a larger objective into visible coordinated work.","Advanced","Goal: create a team task board for a feature."],
+      ["Agent Communication","Understand how teammates coordinate and exchange results.","Advanced","Goal: let one worker hand a discovered constraint to another."],
+      ["Result Synthesis","Have a lead or parent process reconcile worker outputs.","Advanced","Goal: synthesize conflicting recommendations into one implementation plan."]
+    ]
+  },
+  {
+    id:"mcp", title:"MCP", short:"External tools & data", level:"Intermediate",
+    intro:"Connect Claude Code to external tools, data and services.",
+    what:"A standard protocol that lets Claude Code discover and call capabilities outside the local repository.",
+    why:"MCP turns Claude from a repository-only agent into a tool-using engineering assistant.",
+    remember:"MCP = capability. Skill = workflow. Combine them when a workflow needs external tools.",
+    teaching:"Treat every MCP server as a trust boundary. Verify what tools it exposes and what actions they can take.",
+    cards:[
+      ["What Is MCP?","Understand the client/server mental model.","Understand","Goal: explain MCP in one minute using a client ↔ server diagram."],
+      ["Why MCP?","Recognize when external data or actions justify an MCP connection.","Understand","Goal: identify tasks that cannot be solved from repository context alone."],
+      ["MCP Architecture","Understand client, server, tools and resources.","Understand","Goal: trace one tool call from Claude Code to an external service."],
+      ["Local MCP","Connect a server that runs as a local process.","Demo","Goal: add a local MCP server and verify it starts."],
+      ["Remote MCP","Connect to an HTTP-hosted MCP service.","Demo","Goal: connect a remote documentation or service MCP."],
+      ["Add Server","Use the normal MCP setup flow.","Demo","Goal: add one MCP server end to end."],
+      ["CLI Setup","Configure MCP from the command line.","Demo","Goal: use claude mcp commands to create and inspect a connection."],
+      ["Project MCP","Store MCP configuration for a repository where appropriate.","Configure","Goal: add a project-level MCP configuration."],
+      ["User MCP","Make a trusted MCP available across projects.","Configure","Goal: add a personal documentation MCP globally."],
+      [".mcp.json","Understand project-level MCP configuration where applicable.","Configure","Goal: inspect fields in a repository MCP configuration."],
+      ["Authentication","Authenticate Claude Code to protected MCP services.","Configure","Goal: complete an auth flow and reconnect."],
+      ["Authorization","Control what the connected identity is permitted to do.","Verify","Goal: compare read-only and write-capable access."],
+      ["/mcp","Inspect MCP connections from inside Claude Code.","Verify","Goal: confirm server status and exposed capabilities."],
+      ["List Servers","Verify what is configured and currently reachable.","Verify","Goal: list all configured MCP servers."],
+      ["Inspect Tools","See exactly what functions a server exposes.","Verify","Goal: review tool names and parameter contracts before use."],
+      ["Enable / Disable","Temporarily control access without deleting configuration.","Configure","Goal: disable a server and confirm its tools disappear."],
+      ["Remove Server","Cleanly remove obsolete or untrusted integration.","Demo","Goal: remove an MCP server and verify cleanup."],
+      ["MCP Permissions","Apply approval boundaries to external actions.","Configure","Goal: require approval for an external write action."],
+      ["Security & Trust","Treat third-party servers and tools as supply-chain dependencies.","Verify","Goal: review an unknown MCP before granting credentials."],
+      ["Troubleshooting","Diagnose connection, auth, startup and tool discovery failures.","Verify","Goal: intentionally break a URL or auth token and diagnose the symptom."],
+      ["MCP + Skill","Put external capabilities inside a repeatable workflow.","Advanced","Goal: create a documentation Skill backed by MCP."],
+      ["MCP + Subagent","Give external capability only to the specialist that needs it.","Advanced","Goal: connect issue-tracker MCP only to a triage agent."],
+      ["GitHub MCP Demo","Use repository/issue tooling through MCP where supported.","Demo","Goal: inspect an issue or repository artifact using MCP."],
+      ["Rovo / Atlassian MCP","Use enterprise work-management data from Jira/Confluence-style systems where supported.","Demo","Goal: retrieve a ticket and feed it into implementation planning."],
+      ["Playwright / Browser MCP","Use browser automation through an MCP integration where appropriate.","Demo","Goal: inspect a running web UI and return evidence."]
+    ]
+  },
+  {
+    id:"hooks", title:"Hooks", short:"Event-driven enforcement", level:"Intermediate",
+    intro:"Run deterministic or model-assisted actions when important Claude Code lifecycle events occur.",
+    what:"Event handlers that run before, after or around Claude Code actions.",
+    why:"Hooks turn optional guidance into repeatable enforcement and automation.",
+    remember:"CLAUDE.md asks. A Hook runs because the event happened.",
+    teaching:"Use Hooks for enforcement and automation; avoid turning them into an invisible maze of side effects.",
+    cards:[
+      ["What Is a Hook?","Understand event-driven control around the agent lifecycle.","Understand","Goal: explain how a Hook differs from a prompt or Skill."],
+      ["Hooks vs Instructions","Choose deterministic enforcement when guidance is not enough.","Understand","Goal: classify rules as instruction or Hook."],
+      ["Lifecycle Events","Understand where Hooks can intercept or react.","Understand","Goal: map a workflow to relevant lifecycle events."],
+      ["PreToolUse","Check or block an action before a tool runs.","Demo","Goal: block a dangerous shell command before execution."],
+      ["PostToolUse","Validate, format or record what happened after a tool runs.","Demo","Goal: run formatter or validation after a file edit."],
+      ["SessionStart","Initialize context or checks at session startup.","Configure","Goal: inject a project health check at startup."],
+      ["Stop","Run final checks when Claude is about to stop.","Configure","Goal: require tests or unresolved-task checks before completion."],
+      ["Subagent Events","Apply lifecycle controls around delegated workers.","Advanced","Goal: log or validate subagent completion."],
+      ["PreCompact","Capture important state before context compaction.","Advanced","Goal: preserve key task state before compaction."],
+      ["Command Hook","Run a deterministic command as the handler.","Demo","Goal: call a linter or policy script."],
+      ["HTTP Hook","Call an HTTP endpoint from a lifecycle event.","Advanced","Goal: notify an external service after a successful workflow."],
+      ["Prompt Hook","Use a model-assisted decision as part of a Hook flow where supported.","Advanced","Goal: classify whether a change requires extra review."],
+      ["Agent Hook","Delegate Hook reasoning to a specialized worker where supported.","Advanced","Goal: perform a deeper policy check before completion."],
+      ["MCP Tool Hook","Invoke an MCP tool from an event handler where supported.","Advanced","Goal: write an audit record to an external system."],
+      ["Allow / Block","Turn policy outcomes into execution decisions.","Configure","Goal: allow routine edits while blocking protected paths."],
+      ["Run Tests","Trigger tests at meaningful points in the workflow.","Demo","Goal: run targeted tests after relevant changes."],
+      ["Formatter / Linter","Keep mechanical quality checks deterministic.","Demo","Goal: auto-format after edits and report failures."],
+      ["Notification","Surface completion or failure to a human.","Demo","Goal: send a local or external notification when a long task ends."],
+      ["Audit Logging","Record important agent actions for later review.","Advanced","Goal: capture tool usage events into a simple log."],
+      ["Hook Configuration","Understand where Hooks live and how they are scoped.","Configure","Goal: create a project Hook without affecting unrelated repositories."],
+      ["Debug Hooks","Diagnose a Hook that fires at the wrong time or returns the wrong decision.","Verify","Goal: inspect input and output around a failing Hook."],
+      ["Hooks + Agents","Apply specialized enforcement to selected agents.","Advanced","Goal: make reviewer agents read-only and auditable."],
+      ["Hooks + Skills","Add deterministic checks around a reusable workflow.","Advanced","Goal: ensure a deployment Skill always validates before completion."]
+    ]
+  },
+  {
+    id:"plugins", title:"Plugins", short:"Package capabilities", level:"Intermediate",
+    intro:"Package and distribute related Claude Code capabilities as a reusable unit.",
+    what:"A distributable bundle that can include Skills, agents, Hooks, MCP configuration and related assets.",
+    why:"Plugins turn locally useful customization into repeatable team capability.",
+    remember:"Skills define workflows. MCP adds external tools. Plugins package capabilities for distribution.",
+    teaching:"Use Plugins after a capability is stable enough to share; don't package chaos.",
+    cards:[
+      ["What Is a Plugin?","Understand the packaging and distribution mental model.","Understand","Goal: explain Plugin vs Skill vs MCP."],
+      ["Why Plugins?","Recognize when several related customizations should travel together.","Understand","Goal: identify a group of local assets that should become one plugin."],
+      ["Plugin Anatomy","Inspect the structure of a complete plugin.","Understand","Goal: review skills, agents, hooks and configuration inside a plugin."],
+      ["Install Plugin","Add a plugin to Claude Code.","Demo","Goal: install one known plugin and inspect what it contributes."],
+      ["Plugin Marketplace","Discover available plugins from a curated source where supported.","Demo","Goal: browse and evaluate a plugin before installing."],
+      ["Discover Plugins","Find capabilities by task instead of by internal implementation.","Use","Goal: search for a plugin that improves review or testing."],
+      ["Enable / Disable","Control installed capabilities without deleting them.","Configure","Goal: disable a plugin and verify its features disappear."],
+      ["Plugin Skills","Package reusable workflows inside the plugin.","Understand","Goal: trace a plugin-provided Skill."],
+      ["Plugin Agents","Package specialist workers inside the plugin.","Understand","Goal: inspect an agent shipped by the plugin."],
+      ["Plugin Hooks","Ship policy or automation around the plugin workflow.","Understand","Goal: inspect a Hook bundled with a plugin."],
+      ["Plugin MCP","Bundle or describe external integrations used by the plugin.","Understand","Goal: inspect how the plugin connects to external services."],
+      ["Plugin Configuration","Customize behavior after installation.","Configure","Goal: change one plugin setting without modifying the package source."],
+      ["Update Plugin","Move to a newer version safely.","Demo","Goal: update and verify compatibility."],
+      ["Remove Plugin","Cleanly uninstall capabilities no longer needed.","Demo","Goal: uninstall and verify cleanup."],
+      ["Build Custom Plugin","Turn tested local assets into a reusable package.","Advanced","Goal: package a Skill, agent and Hook together."],
+      ["Share Plugin","Distribute capability inside a team or organization.","Advanced","Goal: publish an internal plugin package."],
+      ["Enterprise Distribution","Design governed rollout for many users.","Advanced","Goal: define versioning, trust and update ownership."],
+      ["Plugin Trust & Security","Review third-party code and tool access before installation.","Verify","Goal: create a plugin review checklist."]
+    ]
+  },
+  {
+    id:"git", title:"Git, Worktrees & Review", short:"Safe parallel development", level:"Intermediate",
+    intro:"Use Claude Code inside real version-control workflows with isolation, review and recovery.",
+    what:"Repository-aware development using Git, branches, worktrees, pull requests and structured code review.",
+    why:"Agent-generated changes need the same—or stronger—review and isolation discipline as human-generated changes.",
+    remember:"Parallel agents need parallel working directories, not shared file collisions.",
+    teaching:"The goal is not to automate Git blindly. The goal is to make changes inspectable, isolated and reversible.",
+    cards:[
+      ["Understand Repository","Let Claude inspect structure, conventions and current state before editing.","Understand","Goal: ask Claude to map a repository before making changes."],
+      ["Git Status","Check the working tree before and after agent actions.","Verify","Goal: confirm exactly which files changed."],
+      ["Diff","Review the actual code delta instead of trusting the summary.","Verify","Goal: compare Claude's explanation with the real diff."],
+      ["Branch","Isolate a meaningful unit of work.","Demo","Goal: create a feature branch and implement a small change."],
+      ["Commit","Create an auditable checkpoint for accepted changes.","Demo","Goal: commit a verified change."],
+      ["Commit Message","Generate concise messages from the actual diff.","Demo","Goal: produce a commit message that reflects the change, not the prompt."],
+      ["Pull Request","Prepare reviewable change packages.","Demo","Goal: generate a PR summary with risks and test evidence."],
+      ["Code Review","Use Claude as reviewer, not only implementer.","Demo","Goal: review a diff for correctness, risk and maintainability."],
+      ["/code-review","Invoke a structured review workflow where available.","Demo","Goal: run built-in review and inspect findings."],
+      ["Review Rules","Apply repository-specific review standards.","Configure","Goal: make review check architecture and security constraints."],
+      ["Worktrees","Create separate working directories tied to branches.","Understand","Goal: explain why worktrees help parallel agent work."],
+      ["Why Worktrees?","Prevent agents from editing the same files in the same workspace.","Understand","Goal: compare shared workspace vs isolated worktree execution."],
+      ["Create Worktree","Start a separate working tree for a task.","Demo","Goal: create a worktree and run a second task safely."],
+      ["Parallel Worktrees","Run independent changes concurrently.","Advanced","Goal: implement two unrelated features in separate worktrees."],
+      ["Subagent + Worktree","Give a code-writing agent isolated filesystem state.","Advanced","Goal: delegate a refactor to an isolated agent."],
+      ["Agent Team + Worktrees","Scale isolation across multiple collaborating workers.","Advanced","Goal: assign frontend and backend worktrees to different agents."],
+      ["Conflict Resolution","Handle incompatible changes explicitly.","Demo","Goal: create a small merge conflict and resolve it deliberately."],
+      ["Merge","Bring verified work back into the main line.","Demo","Goal: merge after checks pass."],
+      ["Rollback / Rewind","Recover when generated changes are not acceptable.","Demo","Goal: safely revert or reset an unwanted change."]
+    ]
+  },
+  {
+    id:"workflows", title:"Workflows & Automation", short:"Connect everything", level:"Advanced",
+    intro:"Combine planning, Skills, agents, MCP, Hooks, verification and review into end-to-end engineering workflows.",
+    what:"The orchestration layer that turns individual capabilities into a repeatable delivery process.",
+    why:"Real engineering work is not one prompt. It is a sequence of decisions, actions, checks and handoffs.",
+    remember:"Plan → Implement → Verify → Review → Deliver. Automate only after the checkpoints are clear.",
+    teaching:"This is where isolated Claude Code features become a production engineering system.",
+    cards:[
+      ["Plan","Turn the goal into an explicit implementation path.","Use","Goal: create an implementation plan with constraints and acceptance criteria."],
+      ["Implement","Execute the approved plan with repository-aware changes.","Use","Goal: implement only the agreed scope."],
+      ["/run","Use a packaged run workflow where available.","Demo","Goal: execute a defined task through a reusable run flow."],
+      ["/verify","Check whether the result actually satisfies the task.","Demo","Goal: run verification after implementation and inspect evidence."],
+      ["/debug","Use a structured debugging workflow where available.","Demo","Goal: reproduce, localize and fix a defect."],
+      ["/code-review","Run structured review before delivery.","Demo","Goal: identify issues the implementer may have missed."],
+      ["/batch","Apply a controlled repeated operation across many targets where appropriate.","Advanced","Goal: perform a safe batch change with review checkpoints."],
+      ["Fix / Re-run","Loop through failures until the acceptance criteria pass.","Use","Goal: fail a test, fix the issue and rerun only the relevant checks."],
+      ["Deliver","Prepare the final handoff with evidence and limitations.","Use","Goal: produce a concise delivery summary and validation status."],
+      ["/loop","Repeat a task or check until a condition is met or limits are reached.","Advanced","Goal: poll or recheck a bounded condition."],
+      ["Stop Conditions","Prevent loops from running forever.","Configure","Goal: define success, failure and max-iteration exit conditions."],
+      ["Human Intervention","Know when the workflow must stop and ask.","Configure","Goal: insert approval before a consequential action."],
+      ["Dynamic Workflows","Create runtime workflow structure based on the task.","Advanced","Goal: let the workflow decide how many specialized workers are needed."],
+      ["Dynamic Agent Creation","Instantiate specialist workers based on discovered work.","Advanced","Goal: create agents only for the components actually affected."],
+      ["Parallel Tasks","Fan independent work out concurrently.","Advanced","Goal: run tests, docs and static analysis in parallel."],
+      ["Dependencies","Respect ordering when one task needs another's result.","Advanced","Goal: model build → test → deploy-gate dependencies."],
+      ["Fan-out / Fan-in","Split work and later synthesize results.","Advanced","Goal: gather multiple analyses and consolidate them."],
+      ["Context Isolation","Keep worker contexts focused and independent.","Advanced","Goal: prevent research noise from polluting implementation context."],
+      ["Failure Handling","Design retries, fallback and escalation explicitly.","Advanced","Goal: recover from an unavailable tool or failed test."],
+      ["Completion Criteria","Make 'done' measurable rather than conversational.","Configure","Goal: define checks that must pass before the workflow completes."],
+      ["Routines","Run repeatable cloud or remote workflows on a schedule where supported.","Advanced","Goal: create a recurring repository maintenance routine."],
+      ["Scheduled Tasks","Trigger known work at a defined time or cadence.","Advanced","Goal: schedule a recurring verification or housekeeping task."],
+      ["/schedule","Use a scheduling surface where available.","Advanced","Goal: configure a scheduled task and inspect its next run."],
+      ["GitHub Event","Trigger workflow from repository activity where supported.","Advanced","Goal: run review or triage after a PR or issue event."],
+      ["API-triggered Workflow","Start a workflow from an external system.","Advanced","Goal: trigger Claude work from a service event."],
+      ["Overnight Jobs","Use background execution for longer work.","Advanced","Goal: run a large analysis without blocking interactive work."],
+      ["Background Agent","Continue long-running delegated work independently.","Advanced","Goal: start a background task and inspect its result later."],
+      ["Cloud Session","Understand remote execution surfaces and handoff.","Advanced","Goal: continue work across local and remote environments."],
+      ["Remote Control","Operate a remote Claude Code session where supported.","Advanced","Goal: monitor or continue a remote task."],
+      ["Parallel Sessions","Run several independent sessions without mixing context.","Advanced","Goal: separate bugfix, review and documentation work."]
+    ]
+  }
+];
+
+const ellipse = {
+  cx: 50,
+  cy: 50,
+  rx: 36,
+  ry: 36
+};
+
+const landing = document.getElementById("landing");
+const mapView = document.getElementById("mapView");
+const radial = document.getElementById("radial");
+const detailLayout = document.getElementById("detailLayout");
+const miniNodes = document.getElementById("miniNodes");
+const topicEl = document.getElementById("topic");
+const connectView = document.getElementById("connectView");
+const demoPanel = document.getElementById("demoPanel");
+let currentTopic = null;
+
+function showOnly(view){
+  [landing,mapView,detailLayout,connectView].forEach(v=>v.classList.remove("visible"));
+  landing.style.display="none";
+  if(view===landing){ landing.style.display="flex"; return; }
+  view.classList.add("visible");
+}
+
+function buildRadial(){
+  topics.forEach((t,i)=>{
+    const angle = (-90 + i * (360 / topics.length)) * Math.PI / 180;
+    const x = ellipse.cx + ellipse.rx * Math.cos(angle);
+    const y = ellipse.cy + ellipse.ry * Math.sin(angle);
+
+    const btn=document.createElement("button");
+    btn.className="node";
+    btn.style.left=`${x}%`;
+    btn.style.top=`${y}%`;
+    btn.innerHTML=`<div>${t.title}<small>${t.short}</small></div>`;
+    btn.dataset.id=t.id;
+    btn.onclick=()=>openTopic(t.id);
+    radial.appendChild(btn);
+  });
+}
+
+function buildMini(){
+  miniNodes.innerHTML="";
+  topics.forEach(t=>{
+    const b=document.createElement("button");
+    b.className="miniNode"+(currentTopic===t.id?" active":"");
+    b.dataset.id=t.id;
+    b.innerHTML=`${t.title}<span>${t.short}</span>`;
+    b.onclick=()=>openTopic(t.id);
+    miniNodes.appendChild(b);
+  });
+}
+
+function openTopic(id){
+  currentTopic=id;
+  const t=topics.find(x=>x.id===id);
+  buildMini();
+  topicEl.innerHTML=`
+    <div class="topicHeader">
+      <div>
+        <div class="kicker">Capability</div>
+        <h2>${t.title}</h2>
+        <p>${t.intro}</p>
+      </div>
+      <span class="badge">${t.level}</span>
+    </div>
+    <div class="triple">
+      <div class="infoBox"><label>What it is</label><strong>${t.what}</strong></div>
+      <div class="infoBox"><label>Why use it</label><strong>${t.why}</strong></div>
+      <div class="infoBox"><label>Remember</label><strong>${t.remember}</strong></div>
+    </div>
+    <div class="sectionTitle">Learning Blocks</div>
+    <div class="cards">
+      ${t.cards.map((c,i)=>`
+        <div class="card" onclick="openCard('${t.id}',${i})">
+          <h4>${c[0]}</h4>
+          <p>${c[1]}</p>
+          <span class="type">${c[2]}</span>
+        </div>`).join("")}
+    </div>
+    <div class="teachingStrip">
+      <strong>Instructor Anchor</strong>
+      <p>${t.teaching}</p>
+    </div>
+  `;
+  showOnly(detailLayout);
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function demoStepsFor(topic, card){
+  const title=card[0], type=card[2], goal=card[3];
+  let steps=[
+    ["UNDERSTAND", card[1]],
+    ["GOAL", goal.replace(/^Goal:\s*/,"")],
+    ["DO", "Show the concept briefly on this overview page, then switch to the real Claude Code terminal for the hands-on step."],
+    ["VERIFY", "Return to Claude Code and show visible evidence that the action worked: changed state, tool availability, passing check, diff, status or result."]
+  ];
+  const lower=title.toLowerCase();
+  if(topic.id==="mcp" && lower.includes("add server")){
+    steps=[
+      ["GOAL","Connect Claude Code to an MCP server."],
+      ["CLI","Use the Claude Code MCP command flow for the server type you are teaching."],
+      ["CONFIG","For project-scoped MCP, show the repository configuration (for example .mcp.json where applicable)."],
+      ["VERIFY","List/inspect MCP servers, then use /mcp and confirm tools are visible before calling one."]
+    ];
+  }
+  if(topic.id==="skills" && lower.includes("create skill")){
+    steps=[
+      ["GOAL","Create one reusable Skill from a repeated engineering procedure."],
+      ["CREATE","Create the Skill folder and SKILL.md with a precise name, description and workflow."],
+      ["USE","Invoke it manually first; then test natural-language triggering if appropriate."],
+      ["VERIFY","Run a normal case and an edge case. Confirm the Skill performs the procedure consistently."]
+    ];
+  }
+  if(topic.id==="agents" && lower.includes("create subagent")){
+    steps=[
+      ["GOAL","Create a specialized worker with a narrow responsibility."],
+      ["DEFINE","Give it a clear description, focused system instructions and only the tools it needs."],
+      ["DELEGATE","Ask the parent Claude session to hand the specialist one bounded task."],
+      ["VERIFY","Inspect the subagent result and confirm it stayed within its role and tool boundary."]
+    ];
+  }
+  if(topic.id==="hooks" && lower.includes("pretooluse")){
+    steps=[
+      ["GOAL","Stop a dangerous action before the tool executes."],
+      ["HOOK","Configure a PreToolUse hook that inspects the attempted action."],
+      ["TEST","Trigger a safe action, then a deliberately blocked action."],
+      ["VERIFY","Show that the blocked command never executes and the user receives a clear reason."]
+    ];
+  }
+  if(topic.id==="git" && lower.includes("code review")){
+    steps=[
+      ["GOAL","Review the actual code delta before merge."],
+      ["INPUT","Show git status and diff first so the evidence is visible."],
+      ["REVIEW","Run a structured review focusing on correctness, regressions, architecture and tests."],
+      ["VERIFY","Separate confirmed issues from suggestions and show which findings you accepted."]
+    ];
+  }
+  if(topic.id==="workflows" && lower.includes("/verify")){
+    steps=[
+      ["GOAL","Prove that the implementation satisfies the acceptance criteria."],
+      ["RUN","Invoke the verification workflow after implementation."],
+      ["EVIDENCE","Show tests, static checks, runtime behavior or other concrete signals."],
+      ["DECIDE","If verification fails, fix and rerun; if it passes, move to review/delivery."]
+    ];
+  }
+  return steps;
+}
+
+window.openCard=function(topicId,index){
+  const t=topics.find(x=>x.id===topicId);
+  const c=t.cards[index];
+  document.getElementById("demoKicker").textContent=`${t.title} • ${c[2]}`;
+  document.getElementById("demoTitle").textContent=c[0];
+  const steps=demoStepsFor(t,c);
+  document.getElementById("demoSteps").innerHTML=steps.map(s=>`
+    <div class="step"><label>${s[0]}</label><p>${s[1]}</p></div>
+  `).join("");
+  demoPanel.classList.add("visible");
+};
+
+document.getElementById("closeDemo").onclick=()=>demoPanel.classList.remove("visible");
+document.getElementById("launchHub").onclick=()=>showOnly(mapView);
+document.getElementById("centerMapHub").onclick=()=>showOnly(mapView);
+document.getElementById("mapBtn").onclick=()=>showOnly(mapView);
+document.getElementById("backToMap").onclick=()=>showOnly(mapView);
+document.getElementById("connectBtn").onclick=()=>showOnly(connectView);
+
+const search=document.getElementById("search");
+const searchResults=document.getElementById("searchResults");
+search.addEventListener("input",()=>{
+  const q=search.value.trim().toLowerCase();
+  if(!q){searchResults.classList.remove("visible");searchResults.innerHTML="";return;}
+  const results=[];
+  topics.forEach(t=>{
+    if((t.title+" "+t.intro+" "+t.short).toLowerCase().includes(q)){
+      results.push({topic:t,card:null});
+    }
+    t.cards.forEach((c,i)=>{
+      if((c[0]+" "+c[1]+" "+c[2]).toLowerCase().includes(q)){
+        results.push({topic:t,card:{data:c,index:i}});
+      }
+    });
+  });
+  searchResults.innerHTML=results.slice(0,18).map((r,i)=>`
+    <div class="result" data-i="${i}">
+      <strong>${r.card?r.card.data[0]:r.topic.title}</strong>
+      <span>${r.topic.title}${r.card?" • "+r.card.data[2]:""}</span>
+    </div>
+  `).join("") || `<div class="result"><strong>No matches</strong><span>Try MCP, skill, hook, review, workflow...</span></div>`;
+  searchResults.classList.add("visible");
+  [...searchResults.querySelectorAll(".result[data-i]")].forEach(el=>{
+    el.onclick=()=>{
+      const r=results[Number(el.dataset.i)];
+      openTopic(r.topic.id);
+      if(r.card) setTimeout(()=>window.openCard(r.topic.id,r.card.index),100);
+      searchResults.classList.remove("visible");
+      search.value="";
+    };
+  });
+});
+document.addEventListener("click",(e)=>{
+  if(!e.target.closest(".searchWrap")) searchResults.classList.remove("visible");
+});
+
+
+function applyTheme(theme){
+  const isLight = theme === "light";
+  document.body.classList.toggle("light", isLight);
+  const btn = document.getElementById("themeBtn");
+  btn.textContent = isLight ? "☾ Dark Theme" : "☀ Light Theme";
+  localStorage.setItem("claudeCodeExplorerTheme", isLight ? "light" : "dark");
+}
+document.getElementById("themeBtn").onclick=()=>{
+  applyTheme(document.body.classList.contains("light") ? "dark" : "light");
+};
+applyTheme(localStorage.getItem("claudeCodeExplorerTheme") || "dark");
+
+buildRadial();
+showOnly(landing);
+</script>
+</body>
+</html>

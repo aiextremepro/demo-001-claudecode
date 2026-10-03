@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Claude Code — Interactive Harness Engineering Map</title>
+<style>
+  :root{
+    --bg:#06101e;
+    --panel:#0b1829;
+    --panel2:#101f34;
+    --line:#6e89aa;
+    --text:#f7fbff;
+    --muted:#a8b8ce;
+    --accent:#49d7ff;
+    --core:#52e6a2;
+    --foundation:#65b7ff;
+    --governance:#ffbb55;
+    --extensibility:#b28cff;
+    --orchestration:#ff7d9f;
+    --surface:#59e0db;
+    --shadow:0 18px 45px rgba(0,0,0,.32);
+  }
+  *{box-sizing:border-box}
+  html,body{min-height:100%;margin:0;background:var(--bg);color:var(--text);font-family:Inter,Segoe UI,Arial,sans-serif;overflow:hidden}
+  body{
+    background:
+      radial-gradient(circle at 37% 42%, rgba(72,173,255,.14), transparent 27%),
+      radial-gradient(circle at 24% 52%, rgba(82,230,162,.08), transparent 22%),
+      linear-gradient(135deg,#050b14 0%,#071526 56%,#081221 100%);
+  }
+  .app{height:100vh;display:grid;grid-template-rows:72px 1fr 34px}
+  header{
+    display:flex;align-items:center;justify-content:space-between;padding:0 26px;
+    border-bottom:1px solid rgba(255,255,255,.08);background:rgba(3,11,21,.58);backdrop-filter:blur(14px);z-index:10
+  }
+  .brand h1{font-size:20px;margin:0;letter-spacing:.6px}
+  .brand small{color:var(--muted);font-size:12px}
+  .controls{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end}
+  button{
+    border:1px solid rgba(255,255,255,.17);background:rgba(255,255,255,.07);color:var(--text);
+    border-radius:9px;padding:9px 12px;font-weight:700;cursor:pointer;transition:.22s ease;font-size:12px
+  }
+  button:hover{transform:translateY(-1px);background:rgba(255,255,255,.14)}
+  button.primary{background:linear-gradient(135deg,rgba(73,215,255,.22),rgba(82,230,162,.21));border-color:rgba(82,230,162,.55)}
+  button.active{background:linear-gradient(135deg,rgba(255,125,159,.30),rgba(178,140,255,.22));border-color:rgba(255,125,159,.7)}
+  main{display:grid;grid-template-columns:minmax(0,1fr) 410px;min-height:0}
+  .canvas-wrap{position:relative;min-width:0;min-height:0;overflow:hidden}
+  .canvas{position:absolute;inset:0;overflow:hidden;transition:.28s ease}
+  .canvas.full-map .core{top:50%}
+  .grid{
+    position:absolute;inset:0;opacity:.18;
+    background-image:linear-gradient(rgba(255,255,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.08) 1px,transparent 1px);
+    background-size:32px 32px;
+  }
+  svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  .connector{stroke:rgba(115,149,186,.48);stroke-width:1.8;fill:none;stroke-dasharray:6 7}
+  .connector.advanced{stroke:rgba(255,125,159,.44)}
+  .node{
+    position:absolute;width:158px;min-height:62px;border-radius:13px;padding:9px 11px;
+    border:1px solid rgba(255,255,255,.16);background:rgba(16,31,52,.88);box-shadow:var(--shadow);
+    cursor:pointer;transition:left .34s ease, top .34s ease, opacity .24s ease, transform .24s ease, border-color .22s ease, box-shadow .22s ease;
+    backdrop-filter:blur(11px);display:flex;flex-direction:column;justify-content:center;
+    transform:translate(-50%,-50%);z-index:2
+  }
+  .node:hover{transform:translate(-50%,-50%) scale(1.045);border-color:rgba(255,255,255,.42);z-index:4}
+  .node.selected{transform:translate(-50%,-50%) scale(1.055);box-shadow:0 0 0 2px rgba(73,215,255,.46),0 20px 45px rgba(0,0,0,.38);z-index:5}
+  .node h3{font-size:12.5px;line-height:1.12;margin:0 0 5px}
+  .node p{font-size:10.2px;line-height:1.25;margin:0;color:var(--muted)}
+  .node .tag{font-size:8px;text-transform:uppercase;letter-spacing:1.05px;font-weight:800;margin-bottom:5px}
+  .foundation .tag{color:var(--foundation)}
+  .governance .tag{color:var(--governance)}
+  .extensibility .tag{color:var(--extensibility)}
+  .orchestration .tag{color:var(--orchestration)}
+  .surface .tag{color:var(--surface)}
+  .node.advanced{opacity:0;transform:translate(-50%,-50%) scale(.74);pointer-events:none}
+  .node.advanced.show{opacity:1;transform:translate(-50%,-50%) scale(1);pointer-events:auto}
+  .node.advanced.show:hover{transform:translate(-50%,-50%) scale(1.045)}
+  .node.advanced.show.selected{transform:translate(-50%,-50%) scale(1.055)}
+  .core{
+    position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);width:300px;min-height:196px;padding:19px;
+    border-radius:21px;background:
+    radial-gradient(circle at 18% 20%,rgba(82,230,162,.28),transparent 37%),
+    linear-gradient(145deg,rgba(13,42,62,.96),rgba(8,27,46,.98));
+    border:1px solid rgba(82,230,162,.62);box-shadow:0 0 0 1px rgba(73,215,255,.18),0 26px 65px rgba(0,0,0,.47);
+    text-align:center;display:flex;flex-direction:column;justify-content:center;z-index:3;transition:top .34s ease
+  }
+  .core .eyebrow{color:var(--core);font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase}
+  .core h2{font-size:32px;margin:8px 0 5px;letter-spacing:.4px}
+  .core .headline{font-weight:800;font-size:14.5px;line-height:1.28}
+  .core .sub{color:var(--muted);font-size:11px;margin:9px auto 0;line-height:1.35;max-width:266px}
+  .ratio{display:flex;gap:7px;justify-content:center;margin-top:12px}
+  .ratio span{font-size:10px;border-radius:20px;padding:5px 8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12)}
+  .ratio strong{color:var(--core)}
+  aside{
+    min-height:0;border-left:1px solid rgba(255,255,255,.09);
+    background:linear-gradient(180deg,rgba(8,20,35,.93),rgba(8,17,30,.97));display:flex;flex-direction:column
+  }
+  .panel-head{padding:20px 20px 14px;border-bottom:1px solid rgba(255,255,255,.08)}
+  .panel-head .kicker{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);font-weight:800}
+  .panel-head h2{font-size:22px;margin:7px 0 5px}
+  .panel-head p{margin:0;font-size:12px;color:var(--muted);line-height:1.5}
+  .panel-body{padding:16px 20px 22px;overflow:auto;min-height:0}
+  .panel-body h4{margin:17px 0 8px;font-size:12px;color:#e7f4ff;text-transform:uppercase;letter-spacing:1px}
+  .panel-body p,.panel-body li{font-size:12.5px;line-height:1.55;color:#d6e2f0}
+  .panel-body ul{padding-left:18px;margin:8px 0}
+  .code{
+    white-space:pre-wrap;background:#06111e;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:11px 12px;
+    color:#b8e8ff;font:11.5px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace
+  }
+  .talk{
+    border-left:3px solid var(--core);padding:9px 11px;background:rgba(82,230,162,.07);
+    border-radius:0 8px 8px 0;color:#daf8eb;font-size:12.5px;line-height:1.5
+  }
+  .doc-link{display:inline-block;color:#77ddff;text-decoration:none;font-size:12px;margin-top:6px}
+  .doc-link:hover{text-decoration:underline}
+  .badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .badge{font-size:9px;padding:4px 7px;border-radius:30px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.11);color:#dcecff}
+  footer{display:flex;align-items:center;justify-content:space-between;padding:0 18px;color:#8da3bd;font-size:10px;border-top:1px solid rgba(255,255,255,.07);background:#050e19}
+  .legend{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .legend span:before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;vertical-align:middle}
+  .l1:before{background:var(--foundation)} .l2:before{background:var(--governance)} .l3:before{background:var(--extensibility)} .l4:before{background:var(--orchestration)} .l5:before{background:var(--surface)}
+  .hint{opacity:.78}
+  @media(max-width:1050px){
+    main{grid-template-columns:minmax(0,1fr) 350px}
+    .node{width:140px;min-height:58px;padding:8px 9px}
+    .node h3{font-size:11.5px}.node p{font-size:9.5px}
+    .core{width:250px;min-height:178px}.core h2{font-size:28px}.core .headline{font-size:13px}.core .sub{font-size:10px}
+  }
+  @media(max-width:860px){
+    html,body{overflow:auto}.app{height:auto;min-height:100vh;grid-template-rows:auto auto auto}header{align-items:flex-start;gap:14px;flex-direction:column;padding:18px 18px}main{grid-template-columns:1fr}.canvas-wrap{min-height:980px}.canvas{position:relative;min-height:980px}aside{min-height:420px;border-left:0;border-top:1px solid rgba(255,255,255,.09)}footer{min-height:48px;gap:10px;align-items:flex-start;flex-direction:column;padding:10px 18px}.node{width:145px}.core{top:50%;width:260px}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="brand">
+    <h1>Claude Code — Interactive Harness Engineering Map</h1>
+    <small>Udemy introduction teaching canvas</small>
+  </div>
+  <div class="controls">
+    <button id="tourBtn" class="primary">▶ Guided Tour</button>
+    <button id="advancedBtn">＋ Reveal Advanced Capabilities</button>
+    <button id="resetBtn">↺ Reset</button>
+  </div>
+</header>
+
+<main>
+<section class="canvas-wrap">
+  <div class="canvas" id="canvas">
+    <div class="grid"></div>
+    <svg id="lines" aria-hidden="true"></svg>
+
+    <div class="core" id="core">
+      <div class="eyebrow">Harness Engineering</div>
+      <h2>CLAUDE CODE</h2>
+      <div class="headline">World’s #1 Enterprise Agentic Development Platform</div>
+      <div class="sub">A model is only the reasoning engine. The real operating advantage comes from the agentic harness around it.</div>
+      <div class="ratio"><span><strong>2%</strong> Model</span><span><strong>98%</strong> Harness Engineering</span></div>
+    </div>
+  </div>
+</section>
+
+<aside>
+  <div class="panel-head">
+    <div class="kicker" id="panelKicker">Start here</div>
+    <h2 id="panelTitle">Claude Code</h2>
+    <p id="panelIntro">Click a capability block to reveal the concept, a safe example, and a tutor-ready talking point.</p>
+  </div>
+  <div class="panel-body" id="panelBody">
+    <h4>Lesson framing</h4>
+    <p>Claude Code is not simply a chat model attached to a terminal. It is an agentic development platform with context management, safety controls, extensibility, orchestration, multiple user surfaces, and enterprise observability.</p>
+    <div class="talk">“The model is important, but the surrounding harness determines whether the agent can work safely, repeatably, and productively inside a real software project.”</div>
+    <h4>How to teach this page</h4>
+    <p>Start with the visible foundation cards. Then click <b>Reveal Advanced Capabilities</b> to introduce enterprise-scale orchestration and cross-surface workflows.</p>
+  </div>
+</aside>
+</main>
+
+<footer>
+  <div class="legend">
+    <span class="l1">Foundation</span><span class="l2">Governance</span><span class="l3">Extensibility</span><span class="l4">Advanced orchestration</span><span class="l5">Surfaces</span>
+  </div>
+  <div class="hint">Tip: click cards · use ← / → during guided tour · press R to reset</div>
+</footer>
+</div>
+
+<script>
+const cards = [
+{
+ id:"models", title:"Models & Reasoning", group:"foundation", advanced:false, x:15, y:15, fx:11, fy:12,
+ subtitle:"The reasoning engine behind the harness",
+ intro:"Claude Code uses a model to inspect your request, reason about the codebase, select tools, and generate changes.",
+ explanation:"Model selection affects quality, latency, and cost. But the model operates inside a broader agentic loop: prompt → reasoning → tool calls → results → further reasoning → completion.",
+ code:"/model\n/effort",
+ talk:"“The model is the engine. Claude Code is the vehicle, safety system, dashboard, tools, and operating workflow around that engine.”",
+ docs:[["Model configuration","https://code.claude.com/docs/en/model-config"],["How Claude Code works","https://code.claude.com/docs/en/how-claude-code-works"]]
+},
+{
+ id:"sessions", title:"Sessions & Context", group:"foundation", advanced:false, x:38, y:10, fx:34, fy:9,
+ subtitle:"Working memory for each conversation",
+ intro:"A session has its own context window and accumulates prompts, relevant files, command outputs, and tool results.",
+ explanation:"As a task grows, context becomes a scarce engineering resource. Resume prior work, compact older context, clear a session when appropriate, and delegate focused research to subagents.",
+ code:"/context\n/compact\n/resume\n/clear",
+ talk:"“Context is the agent’s working memory. Strong developers manage context just as carefully as they manage source code.”",
+ docs:[["Glossary: session and compaction","https://code.claude.com/docs/en/glossary"],["Commands","https://code.claude.com/docs/en/commands"]]
+},
+{
+ id:"commands", title:"Commands & Modes", group:"foundation", advanced:false, x:62, y:10, fx:66, fy:9,
+ subtitle:"The control surface inside a session",
+ intro:"Commands let you change models, control permissions, manage context, configure integrations, and run workflows.",
+ explanation:"Type / to see available commands. Use built-in commands as predictable control points instead of treating every action as an unstructured prompt.",
+ code:"/help   /init   /memory\n/context   /compact   /resume\n/model   /effort   /permissions\n/mcp   /agents   /plan",
+ talk:"“Prompting is only one interface. Claude Code also gives us an operational command layer.”",
+ docs:[["Commands reference","https://code.claude.com/docs/en/commands"],["Interactive mode","https://code.claude.com/docs/en/interactive-mode"]]
+},
+{
+ id:"memory", title:"Memory & CLAUDE.md", group:"foundation", advanced:false, x:85, y:22, fx:89, fy:17,
+ subtitle:"Persistent project instructions",
+ intro:"CLAUDE.md and memory let Claude Code retain project-specific instructions and useful working knowledge.",
+ explanation:"Store durable architecture rules, coding conventions, commands, and review expectations in CLAUDE.md. Use /init to bootstrap a project file and /memory to refine persistent instructions.",
+ code:"CLAUDE.md\nCLAUDE.local.md\n.claude/rules/\n\n/init\n/memory",
+ talk:"“Do not repeat the same rules in every prompt. Encode durable knowledge once and let the project carry it forward.”",
+ docs:[["Memory and instructions","https://code.claude.com/docs/en/memory"],["Overview","https://code.claude.com/docs/en/overview"]]
+},
+{
+ id:"permissions", title:"Permissions", group:"governance", advanced:false, x:86, y:47, fx:89, fy:39,
+ subtitle:"Control what the agent can do",
+ intro:"Permissions define which tools run automatically, which require approval, and which are blocked.",
+ explanation:"Rules are evaluated deny → ask → allow. Modes include default, acceptEdits, plan, auto, dontAsk, and bypassPermissions. Use bypassPermissions only inside isolated environments such as containers or VMs.",
+ code:"/permissions\n\nModes:\ndefault · acceptEdits · plan\nauto · dontAsk · bypassPermissions",
+ talk:"“An enterprise agent needs boundaries. Capability without governance is not maturity.”",
+ docs:[["Configure permissions","https://code.claude.com/docs/en/permissions"],["Choose a permission mode","https://code.claude.com/docs/en/permission-modes"]]
+},
+{
+ id:"settings", title:"settings.json", group:"governance", advanced:false, x:83, y:74, fx:89, fy:66,
+ subtitle:"Personal, project, and enterprise control",
+ intro:"Settings configure permissions, hooks, plugins, MCP access, model behavior, and enterprise policy.",
+ explanation:"Claude Code reads multiple settings layers. Higher-precedence layers can enforce organizational controls while project and local files tailor behavior for a repository or developer.",
+ code:"~/.claude/settings.json\n.claude/settings.json\n.claude/settings.local.json\nmanaged settings",
+ talk:"“Settings let us move from ad-hoc prompting to governed engineering practice.”",
+ docs:[["Settings","https://code.claude.com/docs/en/settings"],["Glossary: settings layers","https://code.claude.com/docs/en/glossary"]]
+},
+{
+ id:"hooks", title:"Hooks", group:"governance", advanced:false, x:59, y:87, fx:66, fy:87,
+ subtitle:"Deterministic lifecycle automation",
+ intro:"Hooks run actions at defined lifecycle moments: before tools execute, after edits, when Claude stops, or when input is required.",
+ explanation:"Use hooks to format code, validate commands, run checks, enforce project rules, or send notifications. Shell, HTTP, MCP-tool, prompt, and agent-based handlers are supported.",
+ code:"PreToolUse\nPostToolUse\nStop\nNotification\nPermissionRequest",
+ talk:"“Prompts are probabilistic. Hooks provide deterministic guardrails when a rule must run every time.”",
+ docs:[["Hooks guide","https://code.claude.com/docs/en/hooks-guide"],["Hooks reference","https://code.claude.com/docs/en/hooks"]]
+},
+{
+ id:"skills", title:"Skills", group:"extensibility", advanced:false, x:32, y:87, fx:34, fy:87,
+ subtitle:"Reusable operational expertise",
+ intro:"Skills package repeatable instructions and procedures so teams can reuse engineering knowledge.",
+ explanation:"Store a SKILL.md file under .claude/skills. Skills can be invoked explicitly or loaded when relevant. Use them for repeatable reviews, release workflows, framework conventions, and lab exercises.",
+ code:".claude/skills/security-review/SKILL.md\n.claude/skills/release-check/SKILL.md\n\n/code-review\n/debug\n/batch\n/loop",
+ talk:"“A skill is reusable expertise packaged as an operational recipe.”",
+ docs:[["Skills","https://code.claude.com/docs/en/skills"]]
+},
+{
+ id:"plugins", title:"Plugins & Marketplaces", group:"extensibility", advanced:true, x:5, y:68, fx:11, fy:67,
+ subtitle:"Install and share extension bundles",
+ intro:"Plugins package reusable extensions and distribute them through marketplaces.",
+ explanation:"A plugin can bundle skills, hooks, subagents, and MCP servers. Marketplaces let teams distribute approved extensions consistently.",
+ code:"/plugin\n/reload-plugins\n\nPlugin bundle:\nskills · hooks · subagents · MCP servers",
+ talk:"“Skills are recipes. Plugins are distributable extension packages. Marketplaces make them reusable across teams.”",
+ docs:[["Plugins","https://code.claude.com/docs/en/plugins"],["Settings: plugin configuration","https://code.claude.com/docs/en/settings"]]
+},
+{
+ id:"mcp", title:"MCP Servers", group:"extensibility", advanced:true, x:3, y:42, fx:11, fy:44,
+ subtitle:"Connect external tools and data",
+ intro:"Model Context Protocol servers connect Claude Code to external systems and capabilities.",
+ explanation:"MCP can expose databases, browser automation, source-control systems, internal APIs, design tools, issue trackers, and enterprise services as tools inside Claude Code.",
+ code:"/mcp\n.mcp.json\n\nExamples:\nGitHub · PostgreSQL · Jira\nPlaywright · internal APIs",
+ talk:"“MCP turns Claude Code from a coding assistant into a connected enterprise agent.”",
+ docs:[["MCP","https://code.claude.com/docs/en/mcp"],["Glossary: MCP","https://code.claude.com/docs/en/glossary"]]
+},
+{
+ id:"subagents", title:"Subagents", group:"extensibility", advanced:true, x:4, y:20, fx:11, fy:25,
+ subtitle:"Specialists with isolated context",
+ intro:"Subagents are specialized assistants for focused work such as QA, architecture, security, and research.",
+ explanation:"A subagent can have its own prompt, tools, skills, MCP servers, permission mode, and context. This keeps the main conversation lean while delegating specialist work.",
+ code:".claude/agents/browser-tester.md\n.claude/agents/security-reviewer.md\n\n/agents",
+ talk:"“Do not overload one context. Delegate focused work to specialists.”",
+ docs:[["Subagents","https://code.claude.com/docs/en/sub-agents"]]
+},
+{
+ id:"parallel", title:"Worktrees & Parallel Sessions", group:"orchestration", advanced:true, x:28, y:61, fx:25, fy:64,
+ subtitle:"Isolated branches for concurrent work",
+ intro:"Git worktrees allow separate Claude Code sessions to work in parallel without editing collisions.",
+ explanation:"Use isolated checkouts for independent tasks: one session implements a feature, another writes tests, and a third reviews changes with fresh context.",
+ code:"claude --worktree feature-auth\nclaude --worktree dashboard-kpi",
+ talk:"“Parallel agentic work needs isolation. Worktrees give every stream its own branch and checkout.”",
+ docs:[["Common workflows","https://code.claude.com/docs/en/common-workflows"],["Best practices","https://code.claude.com/docs/en/best-practices"]]
+},
+{
+ id:"workflows", title:"Dynamic Workflows", group:"orchestration", advanced:true, x:28, y:26, fx:25, fy:32,
+ subtitle:"Scripted orchestration at scale",
+ intro:"Dynamic workflows orchestrate many subagents from a JavaScript script that Claude writes and you can rerun.",
+ explanation:"Use dynamic workflows for large migrations, audits, and cross-checked research when a task needs more agents than one conversation can coordinate. The runtime executes in the background while your session remains responsive.",
+ code:"Dynamic workflow =\nClaude-written JavaScript\n+ many subagents\n+ rerunnable orchestration",
+ talk:"“This is where agentic coding becomes repeatable orchestration rather than a one-off conversation.”",
+ docs:[["Dynamic workflows","https://code.claude.com/docs/en/workflows"]]
+},
+{
+ id:"automation", title:"Loops, Goals & Routines", group:"orchestration", advanced:true, x:55, y:26, fx:75, fy:32,
+ subtitle:"Keep work progressing over time",
+ intro:"Modern automation features cover session loops, goal-driven work, and cloud routines.",
+ explanation:"Use /loop for repeated prompts inside a session. Use /goal when work should continue turn after turn until a condition is met. Use /schedule to create routines that run independently on Anthropic-managed infrastructure.",
+ code:"/loop 5m check the deployment\n/goal fix all failing tests\n/schedule daily PR review at 9am",
+ talk:"“Polling, persistent goals, and cloud routines are different automation patterns. Choose the lightest one that fits the task.”",
+ docs:[["Scheduled tasks and /loop","https://code.claude.com/docs/en/scheduled-tasks"],["Routines and /schedule","https://code.claude.com/docs/en/routines"]]
+},
+{
+ id:"teams", title:"Agent Teams", group:"orchestration", advanced:true, x:58, y:59, fx:75, fy:64,
+ subtitle:"Lead agent and collaborating teammates",
+ intro:"Agent teams coordinate multiple Claude Code sessions with shared tasks, messaging, and a lead agent.",
+ explanation:"Teammates work in separate context windows and can communicate directly. Agent teams are experimental and disabled by default, so present them as an advanced preview rather than a beginner default.",
+ code:"Lead agent\n  ↳ Frontend teammate\n  ↳ Backend teammate\n  ↳ QA teammate\n\nExperimental · disabled by default",
+ talk:"“Subagents report back to one parent. Agent teams collaborate with each other under a lead.”",
+ docs:[["Agent teams","https://code.claude.com/docs/en/agent-teams"]]
+},
+{
+ id:"surfaces", title:"Everywhere: Web, Desktop & IDEs", group:"surface", advanced:true, x:77, y:84, fx:89, fy:88,
+ subtitle:"One engine across multiple surfaces",
+ intro:"Claude Code is available in the terminal, VS Code, JetBrains IDEs, the desktop app, and the browser.",
+ explanation:"Web sessions run in cloud infrastructure. Desktop adds visual review and parallel-session workflows. VS Code and JetBrains integrate with IDE workflows. Remote Control continues a local session from a phone or browser. Teleport pulls a web session and branch into the terminal.",
+ code:"Terminal · VS Code · JetBrains\nDesktop · Web · Mobile\n\n/remote-control\nclaude --teleport\n/desktop",
+ talk:"“Claude Code follows the developer across environments instead of remaining locked inside one terminal.”",
+ docs:[["Platforms and integrations","https://code.claude.com/docs/en/platforms"],["Remote Control","https://code.claude.com/docs/en/remote-control"],["Claude Code on the web and Teleport","https://code.claude.com/docs/en/claude-code-on-the-web"],["Desktop","https://code.claude.com/docs/en/desktop"]]
+},
+{
+ id:"telemetry", title:"Channels & Telemetry", group:"surface", advanced:true, x:77, y:54, fx:89, fy:53,
+ subtitle:"Events in, observability out",
+ intro:"Channels push external events into running sessions. OpenTelemetry exports enterprise usage, cost, and tool-activity data.",
+ explanation:"Channels can forward CI failures, monitoring events, alerts, and chat messages into an active session through an MCP server. Channels are in research preview. Telemetry helps organizations measure adoption and govern agent activity.",
+ code:"Channels:\nCI · monitoring · alerts · chat\n\nTelemetry:\nusage · cost · tool activity · governance",
+ talk:"“Events can flow into the agent, and telemetry can flow out to the organization’s observability stack.”",
+ docs:[["Channels","https://code.claude.com/docs/en/channels"],["Monitoring usage with OTel","https://code.claude.com/docs/en/monitoring-usage"]]
+}
+];
+
+const canvas=document.getElementById("canvas");
+const svg=document.getElementById("lines");
+const panelKicker=document.getElementById("panelKicker");
+const panelTitle=document.getElementById("panelTitle");
+const panelIntro=document.getElementById("panelIntro");
+const panelBody=document.getElementById("panelBody");
+const advancedBtn=document.getElementById("advancedBtn");
+const tourBtn=document.getElementById("tourBtn");
+const resetBtn=document.getElementById("resetBtn");
+let advancedVisible=false, tourIndex=-1;
+const core=document.getElementById("core");
+const nodes={};
+
+function getCardPosition(c){
+  // Foundation-only mode keeps the opening map simple.
+  // Advanced mode repositions every card into a wider non-overlapping orbit.
+  if(advancedVisible) return {x:c.fx, y:c.fy};
+  return {x:c.x, y:c.y};
+}
+
+const CANVAS_SAFE_PADDING=18;
+function setNodePosition(el, p){
+  const w=canvas.clientWidth || 1;
+  const h=canvas.clientHeight || 1;
+  const halfW=(el.offsetWidth || 158)/2;
+  const halfH=(el.offsetHeight || 62)/2;
+  const minX=halfW+CANVAS_SAFE_PADDING;
+  const maxX=Math.max(minX, w-halfW-CANVAS_SAFE_PADDING);
+  const minY=halfH+CANVAS_SAFE_PADDING;
+  const maxY=Math.max(minY, h-halfH-CANVAS_SAFE_PADDING);
+  const x=Math.min(maxX, Math.max(minX, (p.x/100)*w));
+  const y=Math.min(maxY, Math.max(minY, (p.y/100)*h));
+  el.style.left=`${x}px`;
+  el.style.top=`${y}px`;
+}
+
+function applyLayout(){
+  canvas.classList.toggle("full-map", advancedVisible);
+  cards.forEach(c=>{
+    const p=getCardPosition(c);
+    const el=nodes[c.id];
+    setNodePosition(el,p);
+  });
+  setTimeout(drawLines,80);
+}
+
+function createNode(c){
+  const el=document.createElement("div");
+  el.className=`node ${c.group} ${c.advanced?"advanced":""}`;
+  el.dataset.id=c.id;
+  el.innerHTML=`<div class="tag">${c.group}</div><h3>${c.title}</h3><p>${c.subtitle}</p>`;
+  el.addEventListener("click",()=>selectCard(c.id));
+  canvas.appendChild(el); nodes[c.id]=el;
+}
+cards.forEach(createNode);
+applyLayout();
+
+function drawLines(){
+  svg.innerHTML="";
+  const cr=core.getBoundingClientRect(), rr=canvas.getBoundingClientRect();
+  const x1=cr.left-rr.left+cr.width/2, y1=cr.top-rr.top+cr.height/2;
+  cards.forEach(c=>{
+    if(c.advanced && !advancedVisible)return;
+    const r=nodes[c.id].getBoundingClientRect();
+    const x2=r.left-rr.left+r.width/2, y2=r.top-rr.top+r.height/2;
+    const dx=(x2-x1)*.47;
+    const path=document.createElementNS("http://www.w3.org/2000/svg","path");
+    path.setAttribute("d",`M ${x1} ${y1} C ${x1+dx} ${y1}, ${x2-dx} ${y2}, ${x2} ${y2}`);
+    path.setAttribute("class",`connector ${c.advanced?"advanced":""}`);
+    svg.appendChild(path);
+  });
+}
+window.addEventListener("resize",()=>{applyLayout();drawLines();});
+setTimeout(drawLines,120);
+
+function selectCard(id){
+  Object.values(nodes).forEach(n=>n.classList.remove("selected"));
+  const c=cards.find(x=>x.id===id); if(!c)return;
+  if(c.advanced && !advancedVisible) toggleAdvanced();
+  nodes[id].classList.add("selected");
+  panelKicker.textContent=c.group + (c.advanced?" · Advanced":"");
+  panelTitle.textContent=c.title;
+  panelIntro.textContent=c.intro;
+  const links=c.docs.map(d=>`<a class="doc-link" target="_blank" rel="noopener" href="${d[1]}">↗ ${d[0]}</a>`).join("<br>");
+  panelBody.innerHTML=`
+    <h4>What students should understand</h4>
+    <p>${c.explanation}</p>
+    <h4>Small example</h4>
+    <div class="code">${c.code}</div>
+    <h4>Tutor talking point</h4>
+    <div class="talk">${c.talk}</div>
+    <h4>Official documentation</h4>
+    ${links}
+    <div class="badges"><span class="badge">${c.group}</span>${c.advanced?'<span class="badge">advanced reveal</span>':''}</div>`;
+}
+
+function toggleAdvanced(){
+  advancedVisible=!advancedVisible;
+  cards.filter(c=>c.advanced).forEach(c=>nodes[c.id].classList.toggle("show",advancedVisible));
+  advancedBtn.classList.toggle("active",advancedVisible);
+  advancedBtn.textContent=advancedVisible?"－ Hide Advanced Capabilities":"＋ Reveal Advanced Capabilities";
+  applyLayout();
+}
+advancedBtn.addEventListener("click",toggleAdvanced);
+
+function reset(){
+  advancedVisible=false;tourIndex=-1;
+  cards.forEach(c=>{nodes[c.id].classList.remove("selected"); if(c.advanced)nodes[c.id].classList.remove("show")});
+  advancedBtn.classList.remove("active"); advancedBtn.textContent="＋ Reveal Advanced Capabilities";
+  tourBtn.textContent="▶ Guided Tour";
+  panelKicker.textContent="Start here"; panelTitle.textContent="Claude Code";
+  panelIntro.textContent="Click a capability block to reveal the concept, a safe example, and a tutor-ready talking point.";
+  panelBody.innerHTML=`<h4>Lesson framing</h4><p>Claude Code is not simply a chat model attached to a terminal. It is an agentic development platform with context management, safety controls, extensibility, orchestration, multiple user surfaces, and enterprise observability.</p><div class="talk">“The model is important, but the surrounding harness determines whether the agent can work safely, repeatably, and productively inside a real software project.”</div><h4>How to teach this page</h4><p>Start with the visible foundation cards. Then click <b>Reveal Advanced Capabilities</b> to introduce enterprise-scale orchestration and cross-surface workflows.</p>`;
+  applyLayout();
+}
+resetBtn.addEventListener("click",reset);
+
+const tourOrder=["models","sessions","commands","memory","permissions","settings","hooks","skills","plugins","mcp","subagents","parallel","workflows","automation","teams","surfaces","telemetry"];
+function moveTour(step=1){
+  tourIndex+=step;
+  if(tourIndex<0)tourIndex=tourOrder.length-1;
+  if(tourIndex>=tourOrder.length)tourIndex=0;
+  const id=tourOrder[tourIndex], c=cards.find(x=>x.id===id);
+  if(c.advanced && !advancedVisible)toggleAdvanced();
+  selectCard(id);
+  tourBtn.textContent=`▶ Tour ${tourIndex+1}/${tourOrder.length}`;
+}
+tourBtn.addEventListener("click",()=>moveTour(1));
+document.addEventListener("keydown",e=>{
+  if(e.key==="ArrowRight")moveTour(1);
+  if(e.key==="ArrowLeft")moveTour(-1);
+  if(e.key.toLowerCase()==="r")reset();
+});
+</script>
+</body>
+</html>
